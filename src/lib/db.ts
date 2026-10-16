@@ -33,17 +33,58 @@ export function sanitizeConnectionString(connectionString: string): string {
 let appPool: Pool | null = null;
 let migrationPool: Pool | null = null;
 
+/**
+ * Normalizes a CA certificate provided through an environment variable.
+ * Env values are frequently single-line, so literal "\n" escapes are converted
+ * back into real newlines that the TLS layer expects.
+ */
+export function normalizeCaCert(raw?: string): string | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  return raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
+}
+
+/**
+ * Translates the configured DB_SSL_MODE into the `ssl` option consumed by node-postgres.
+ * Returns `undefined` in "auto" mode so the driver can honor the connection string's own sslmode.
+ */
+export function buildSslConfig(config: AppConfig): PoolConfig["ssl"] | undefined {
+  switch (config.DB_SSL_MODE) {
+    case "disable":
+      return false;
+    case "require":
+      return { rejectUnauthorized: false };
+    case "verify-full": {
+      const ca = normalizeCaCert(config.DB_SSL_CA_CERT);
+      return ca ? { rejectUnauthorized: true, ca } : { rejectUnauthorized: true };
+    }
+    case "auto":
+    default:
+      return undefined;
+  }
+}
+
 export function createPoolConfig(config: AppConfig, isMigration = false): PoolConfig {
   const connectionString = isMigration
     ? config.MIGRATION_DATABASE_URL || config.DATABASE_URL
     : config.DATABASE_URL;
 
-  return {
+  const poolConfig: PoolConfig = {
     connectionString,
     max: isMigration ? 2 : config.DB_POOL_MAX,
     idleTimeoutMillis: config.DB_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: config.DB_CONNECTION_TIMEOUT_MS,
+    // Tagged in pg_stat_activity for observability behind a connection pooler.
+    application_name: config.DB_APPLICATION_NAME,
   };
+
+  const ssl = buildSslConfig(config);
+  if (ssl !== undefined) {
+    poolConfig.ssl = ssl;
+  }
+
+  return poolConfig;
 }
 
 export function getPool(): Pool {

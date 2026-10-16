@@ -44,6 +44,34 @@ services:
     networks:
       - trukindo-network
 
+  # Optional local connection pooler for parity with managed deployments.
+  # Not started by default. Enable with:  docker compose --profile pooler up -d
+  # Then point DATABASE_URL at:  postgresql://astraops_app:app_secure_password@localhost:6432/astraops
+  # IMPORTANT: keep MIGRATION_DATABASE_URL on the direct port (5432) — session-level
+  # advisory locks used by the migrator are unreliable in transaction pooling mode.
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: trukindo-pgbouncer
+    restart: unless-stopped
+    profiles: ["pooler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=astraops_app
+      - DB_PASSWORD=app_secure_password
+      - DB_NAME=astraops
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=200
+      - DEFAULT_POOL_SIZE=20
+      - AUTH_TYPE=scram-sha-256
+    ports:
+      - "6432:5432"
+    networks:
+      - trukindo-network
+
   nine-router:
     image: alpine:latest
     container_name: trukindo-9router-stub

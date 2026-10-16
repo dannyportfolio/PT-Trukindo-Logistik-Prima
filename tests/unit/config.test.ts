@@ -52,4 +52,36 @@ describe("Centralized Environment Configuration (loadConfig)", () => {
       /ROUTER_BASE_URL: Invalid url/
     );
   });
+
+  it("should default TLS mode to 'auto' and application name to 'astraops'", () => {
+    const config = loadConfig({
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/astraops",
+    });
+
+    expect(config.DB_SSL_MODE).toBe("auto");
+    expect(config.DB_APPLICATION_NAME).toBe("astraops");
+    expect(config.DB_SSL_CA_CERT).toBeUndefined();
+  });
+
+  it("should accept explicit TLS modes for managed PostgreSQL", () => {
+    for (const mode of ["disable", "require", "verify-full"] as const) {
+      const config = loadConfig({
+        DATABASE_URL: "postgresql://postgres:postgres@db.example.com:5432/astraops",
+        DB_SSL_MODE: mode,
+        DB_APPLICATION_NAME: "astraops-web",
+      });
+
+      expect(config.DB_SSL_MODE).toBe(mode);
+      expect(config.DB_APPLICATION_NAME).toBe("astraops-web");
+    }
+  });
+
+  it("should reject an invalid TLS mode", () => {
+    expect(() =>
+      loadConfig({
+        DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/astraops",
+        DB_SSL_MODE: "prefer",
+      })
+    ).toThrow(/DB_SSL_MODE/);
+  });
 });

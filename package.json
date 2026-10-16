@@ -12,7 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:backup": "node scripts/backup-db.mjs",
+    "db:dr-drill": "node scripts/db-dr-drill.mjs",
+    "db:verify": "node scripts/verify-db-connection.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

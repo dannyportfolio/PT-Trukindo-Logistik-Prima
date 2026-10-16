@@ -19,7 +19,8 @@
 | **CI/CD Quality Gate Workflow** | **DONE** | `.github/workflows/ci.yml` dikonfigurasi untuk validasi otomatis typecheck, ESLint, unit tests, dan production build. |
 | **Template Environment Variables** | **DONE** | `.env.example` diperbarui lengkap tanpa membocorkan secret. |
 | **Keamanan Git & Proteksi Secret** | **DONE** | `.gitignore` diperbarui mengabaikan `.env*`, `*.zip`, file temporary, dan build output. |
-| **Penyediaan Kredensial & Server Database Produksi** | **NEEDS_CREDENTIALS** | Membutuhkan provisioning instance PostgreSQL (Managed Supabase/Neon atau Docker VPS) serta secret token dari pemilik proyek. |
+| **Operasional Database Lokal (Backup Harian, Retensi 30 Hari, DR Drill)** | **DONE** | Tersedia `npm run db:backup`, `npm run db:dr-drill` (status PASS), dan `npm run db:verify`. Runbook: `docs/DATABASE_OPERATIONS.md`. |
+| **Penyediaan Managed PostgreSQL Produksi (HA, Replikasi, PITR)** | **DEFERRED** | Ditunda atas keputusan pemilik proyek — fokus tahap lokal. Roadmap & matriks provider: `docs/DATABASE_OPERATIONS.md` Bagian 9; rasional: `docs/adr/ADR-008-database-operations-backup-and-ha-strategy.md`. |
 | **Penyediaan Server Runtime / Container Hosting** | **NEEDS_CONFIGURATION** | Membutuhkan pemilihan provider hosting (VPS Docker, Railway, Render, Fly.io, atau AWS/GCP) oleh pemilik proyek. |
 | **Konfigurasi DNS & SSL Target Domain** | **NEEDS_CONFIGURATION** | Membutuhkan konfigurasi DNS record (A/CNAME) pada registrar domain milik pemilik proyek. |
 | **Akses Langsung Domain `logistikprima.dannyportfolio.github.io`** | **BLOCKED** | Secara teknis **tidak dapat digunakan** karena batasan arsitektur DNS GitHub Pages (lihat penjelasan di Bagian 3). |
@@ -105,7 +106,7 @@ Untuk menjalankan platform AstraOps secara utuh (Strategi A):
 | Kebutuhan | Provider yang Direkomendasikan | Alternatif |
 | :--- | :--- | :--- |
 | **Compute / Container Runtime** | VPS Ubuntu (DigitalOcean / Hetzner / Linode / AWS EC2) menggunakan Docker Compose | PaaS Container: Railway, Render, Fly.io |
-| **Database PostgreSQL** | PostgreSQL 16 bawaan `docker-compose.yml` (self-hosted) | Managed PostgreSQL: Supabase, Neon, AWS RDS |
+| **Database PostgreSQL** | PostgreSQL 16 bawaan `docker-compose.yml` (self-hosted, backup + DR tersedia — lihat `docs/DATABASE_OPERATIONS.md`) | Managed PostgreSQL: DigitalOcean, Supabase, Neon, AWS RDS (ditunda; roadmap di dokumen yang sama) |
 | **Reverse Proxy & SSL** | Caddy Server (Otomatis HTTPS Let's Encrypt) atau Nginx | Cloudflare Proxy |
 | **AI Model Gateway** | 9Router lokal (`http://localhost:20128/v1`) | OpenAI API Direct Fallback (`LLM_GATEWAY_PROVIDER=direct`) |
 
