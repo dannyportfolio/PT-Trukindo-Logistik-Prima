@@ -30,7 +30,7 @@ const MAX_REQUEST_BYTES = MAX_FILE_SIZE + MAX_MULTIPART_OVERHEAD;
  */
 export async function POST(req: Request) {
   // 1. Authentication & Authorization check (server-derived identity only)
-  const auth = authenticateRequest(req);
+  const auth = await authenticateRequest(req);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }

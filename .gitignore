@@ -44,3 +44,6 @@ Thumbs.db
 *.zip
 *.tar.gz
 *.bak
+backups/
+*.sql.gz
+*.sha256

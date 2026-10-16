@@ -15,7 +15,7 @@ import {
  */
 export async function POST(req: Request) {
   // 1. Authentication & Authorization check (server-derived identity only)
-  const auth = authenticateRequest(req);
+  const auth = await authenticateRequest(req);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
  */
 export async function GET(req: Request) {
   // 1. Authentication & Authorization check (server-derived identity only)
-  const auth = authenticateRequest(req);
+  const auth = await authenticateRequest(req);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }

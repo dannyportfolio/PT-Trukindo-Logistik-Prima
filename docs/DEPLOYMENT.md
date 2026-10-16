@@ -148,35 +148,47 @@ CORS_ALLOWED_ORIGINS=*
 
 ## 6. LANGKAH DEPLOYMENT DARI REPOSITORY
 
-### Opsi A: Deployment via Docker Compose (Metode Paling Mudah & Stabil)
+### Opsi A: Deployment Produksi via Docker Compose & Caddy SSL (Metode Rekomendasi)
+
+Repository menyertakan stack produksi terisolasi penuh (`docker-compose.prod.yml` dan `Caddyfile`) dengan reverse proxy Caddy terintegrasi Let's Encrypt otomatis, PostgreSQL di jaringan internal tanpa ekspos port publik, dan healthcheck aktif.
 
 1. **Clone repository pada server target:**
    ```bash
-   git clone <REPOSITORY_URL> astraops
+   git clone https://github.com/dannyportfolio/PT-Trukindo-Logistik-Prima.git astraops
    cd astraops
    ```
 
 2. **Buat file environment produksi:**
    ```bash
-   cp .env.example .env
-   # Edit variabel dengan kredensial kuat:
-   nano .env
+   cp .env.example .env.production
+   # Atur APP_DOMAIN (misal logistikprima.com), ACME_EMAIL, POSTGRES_APP_PASSWORD, dan token autentikasi
+   nano .env.production
    ```
 
-3. **Jalankan container platform:**
+3. **Jalankan container stack produksi:**
    ```bash
-   docker compose up -d --build
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
    ```
 
-4. **Jalankan migrasi database di dalam container:**
+4. **Jalankan migrasi skema database:**
    ```bash
-   docker compose exec app npm run db:migrate
+   docker compose -f docker-compose.prod.yml exec app npm run db:migrate
    ```
 
-5. **Periksa status container:**
+5. **Pencadangan Database Otomatis (Automated Backup):**
+   Jalankan backup terkompresi dengan checksum SHA-256 dan retensi 30 hari:
    ```bash
-   docker compose ps
-   docker compose logs -f app
+   # Melalui container app
+   docker compose -f docker-compose.prod.yml exec app npm run db:backup
+   
+   # Atau dijadwalkan via cron harian di host VPS (02:00 AM)
+   0 2 * * * cd /opt/astraops && docker compose -f docker-compose.prod.yml exec -T app npm run db:backup >> /var/log/astraops-backup.log 2>&1
+   ```
+
+6. **Periksa status container & log reverse proxy:**
+   ```bash
+   docker compose -f docker-compose.prod.yml ps
+   docker compose -f docker-compose.prod.yml logs -f caddy
    ```
 
 ---

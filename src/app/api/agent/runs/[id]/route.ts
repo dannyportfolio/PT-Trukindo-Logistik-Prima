@@ -21,7 +21,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   // 1. Authenticate (VIEWER is permitted to inspect run results)
-  const auth = authenticateRequest(req, ["ADMIN", "SALES_OPERATOR", "VIEWER"]);
+  const auth = await authenticateRequest(req, ["ADMIN", "SALES_OPERATOR", "VIEWER"]);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }
