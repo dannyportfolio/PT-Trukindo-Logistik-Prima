@@ -1,0 +1,61 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trukindo-platform
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://astraops_app:app_secure_password@postgres:5432/astraops
+      - MIGRATION_DATABASE_URL=postgresql://astraops_admin:adminpass@postgres:5432/astraops
+      - ROUTER_BASE_URL=http://nine-router:20128/v1
+      - LLM_GATEWAY_PROVIDER=9router
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN:-trukindo-secure-secret-token}
+      - ADMIN_AUTH_TOKEN=${ADMIN_AUTH_TOKEN:-trukindo-admin-token}
+      - VIEWER_AUTH_TOKEN=${VIEWER_AUTH_TOKEN:-trukindo-viewer-token}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - trukindo-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: trukindo-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432" # Bound strictly to localhost loopback, configurable via POSTGRES_PORT
+    environment:
+      - POSTGRES_DB=astraops
+      - POSTGRES_USER=astraops_admin
+      - POSTGRES_PASSWORD=adminpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/000_init_roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astraops_admin -d astraops"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trukindo-network
+
+  nine-router:
+    image: alpine:latest
+    container_name: trukindo-9router-stub
+    restart: unless-stopped
+    command: ["sleep", "infinity"]
+    networks:
+      - trukindo-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  trukindo-network:
+    driver: bridge
