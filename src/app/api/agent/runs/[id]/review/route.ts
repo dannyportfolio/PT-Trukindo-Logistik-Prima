@@ -29,7 +29,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   // 1. Authenticate & Authorize
-  const auth = authenticateRequest(req, ["ADMIN", "SALES_OPERATOR"]);
+  const auth = await authenticateRequest(req, ["ADMIN", "SALES_OPERATOR"]);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }

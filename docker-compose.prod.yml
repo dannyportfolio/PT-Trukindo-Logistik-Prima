@@ -1,0 +1,90 @@
+# Production Docker Compose for PT Trukindo Logistik Prima / AstraOps
+# Architecture:
+# - Caddy reverse proxy terminates TLS (Let's Encrypt), applies security headers, serves HTTP/3 & compression.
+# - App runs Next.js in hardened standalone multi-stage container without root privileges.
+# - PostgreSQL is strictly isolated to the internal container bridge network with persistent volume.
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: trukindo-caddy-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 QUIC
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:-localhost}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@trukindo.co.id}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - trukindo-prod-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trukindo-app-prod
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://astraops_app:${POSTGRES_APP_PASSWORD:-app_secure_password}@postgres:5432/astraops_prod
+      - MIGRATION_DATABASE_URL=postgresql://astraops_admin:${POSTGRES_ADMIN_PASSWORD:-admin_secure_password}@postgres:5432/astraops_prod
+      - ROUTER_BASE_URL=${ROUTER_BASE_URL:-http://nine-router:20128/v1}
+      - LLM_GATEWAY_PROVIDER=${LLM_GATEWAY_PROVIDER:-9router}
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN:?API_AUTH_TOKEN required in production}
+      - ADMIN_AUTH_TOKEN=${ADMIN_AUTH_TOKEN:?ADMIN_AUTH_TOKEN required in production}
+      - VIEWER_AUTH_TOKEN=${VIEWER_AUTH_TOKEN:-trukindo-viewer-token}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/auth/session').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    networks:
+      - trukindo-prod-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: trukindo-postgres-prod
+    restart: always
+    expose:
+      - "5432" # Isolated: intentionally NOT mapped to host ports to prevent external exposure
+    environment:
+      - POSTGRES_DB=astraops_prod
+      - POSTGRES_USER=astraops_admin
+      - POSTGRES_PASSWORD=${POSTGRES_ADMIN_PASSWORD:-admin_secure_password}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/000_init_roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astraops_admin -d astraops_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trukindo-prod-net
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  postgres_prod_data:
+    driver: local
+
+networks:
+  trukindo-prod-net:
+    driver: bridge

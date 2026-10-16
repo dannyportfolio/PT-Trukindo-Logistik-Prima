@@ -1,0 +1,58 @@
+# Production Caddy Configuration for PT Trukindo Logistik Prima / AstraOps
+# Provides automated TLS (Let's Encrypt / ZeroSSL), reverse proxy, HSTS, and asset caching.
+
+{
+    # Global options
+    email {$ACME_EMAIL:admin@trukindo.co.id}
+    admin off
+}
+
+# Site block: binds to configured production domain or fallback localhost
+{$APP_DOMAIN:localhost} {
+    # High-efficiency compression for modern browsers
+    encode zstd gzip
+
+    # Enterprise-grade HTTP security headers
+    header {
+        # Enforce HTTPS across all subdomains for 1 year
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Clickjacking defense (same origin only)
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent referrer leakage
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Restrict browser hardware capabilities
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+        # Mask server signature
+        -Server
+    }
+
+    # Immutable aggressive caching for Next.js static chunks and assets
+    @static {
+        path /_next/static/* /images/* /favicon.ico /robots.txt /sitemap.xml
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Reverse proxy to AstraOps Next.js standalone container
+    reverse_proxy app:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+
+        # Health monitoring and timeouts
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 60s
+        }
+    }
+
+    # Structured JSON logging for auditability and container log ingestion
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}

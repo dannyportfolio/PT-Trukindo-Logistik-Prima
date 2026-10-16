@@ -27,6 +27,9 @@ export function Navbar() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"credentials" | "token">("credentials");
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [tokenInput, setTokenInput] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
@@ -58,9 +61,20 @@ export function Navbar() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tokenInput.trim()) {
-      setLoginError("Please enter an authentication token.");
-      return;
+
+    let payload: Record<string, string>;
+    if (authMode === "credentials") {
+      if (!emailInput.trim() || !passwordInput) {
+        setLoginError("Silakan masukkan email dan password operator.");
+        return;
+      }
+      payload = { email: emailInput.trim(), password: passwordInput };
+    } else {
+      if (!tokenInput.trim()) {
+        setLoginError("Silakan masukkan token autentikasi.");
+        return;
+      }
+      payload = { token: tokenInput.trim() };
     }
 
     setLoggingIn(true);
@@ -70,20 +84,22 @@ export function Navbar() {
       const res = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenInput.trim() }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setLoginError(data.error?.message || "Invalid authentication token.");
+        setLoginError(data.error?.message || "Autentikasi gagal. Silakan periksa kembali kredensial Anda.");
       } else {
         setIsLoginOpen(false);
+        setEmailInput("");
+        setPasswordInput("");
         setTokenInput("");
         checkSession();
         window.location.reload();
       }
     } catch (err: unknown) {
-      setLoginError(err instanceof Error ? err.message : "Failed to connect to authentication service.");
+      setLoginError(err instanceof Error ? err.message : "Gagal terhubung ke layanan autentikasi.");
     } finally {
       setLoggingIn(false);
     }
@@ -271,8 +287,63 @@ export function Navbar() {
                 Operator Authentication
               </h3>
               <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
-                Authenticate your browser session using your AstraOps bearer token. Token is saved in a secure, HttpOnly session cookie and never exposed to client script bundles.
+                Masuk ke AstraOps internal desk menggunakan akun terdaftar atau bearer token resmi. Sesi diamankan dengan HttpOnly cookie (8 jam).
               </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "6px",
+                padding: "4px",
+                backgroundColor: "var(--muted)",
+                borderRadius: "var(--radius)",
+                marginBottom: "16px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("credentials");
+                  setLoginError(null);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  borderRadius: "calc(var(--radius) - 2px)",
+                  border: "none",
+                  cursor: "pointer",
+                  backgroundColor: authMode === "credentials" ? "var(--background)" : "transparent",
+                  color: authMode === "credentials" ? "var(--foreground)" : "var(--muted-foreground)",
+                  boxShadow: authMode === "credentials" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                Akun Operator
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("token");
+                  setLoginError(null);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  borderRadius: "calc(var(--radius) - 2px)",
+                  border: "none",
+                  cursor: "pointer",
+                  backgroundColor: authMode === "token" ? "var(--background)" : "transparent",
+                  color: authMode === "token" ? "var(--foreground)" : "var(--muted-foreground)",
+                  boxShadow: authMode === "token" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                Access Token
+              </button>
             </div>
 
             {loginError && (
@@ -292,37 +363,104 @@ export function Navbar() {
             )}
 
             <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: "18px" }}>
-                <label
-                  htmlFor="operator-token"
-                  style={{
-                    display: "block",
-                    fontSize: "0.875rem",
-                    fontWeight: 500,
-                    marginBottom: "6px",
-                    color: "var(--card-foreground)",
-                  }}
-                >
-                  API / Admin Token
-                </label>
-                <input
-                  id="operator-token"
-                  type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Enter API token..."
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    backgroundColor: "var(--background)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    color: "var(--foreground)",
-                    fontSize: "0.875rem",
-                  }}
-                  autoFocus
-                />
-              </div>
+              {authMode === "credentials" ? (
+                <>
+                  <div style={{ marginBottom: "14px" }}>
+                    <label
+                      htmlFor="operator-email"
+                      style={{
+                        display: "block",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        marginBottom: "6px",
+                        color: "var(--card-foreground)",
+                      }}
+                    >
+                      Email Operator
+                    </label>
+                    <input
+                      id="operator-email"
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="admin@trukindo.co.id"
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        backgroundColor: "var(--background)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        color: "var(--foreground)",
+                        fontSize: "0.875rem",
+                      }}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: "18px" }}>
+                    <label
+                      htmlFor="operator-password"
+                      style={{
+                        display: "block",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        marginBottom: "6px",
+                        color: "var(--card-foreground)",
+                      }}
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="operator-password"
+                      type="password"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="••••••••"
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        backgroundColor: "var(--background)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        color: "var(--foreground)",
+                        fontSize: "0.875rem",
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginBottom: "18px" }}>
+                  <label
+                    htmlFor="operator-token"
+                    style={{
+                      display: "block",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      marginBottom: "6px",
+                      color: "var(--card-foreground)",
+                    }}
+                  >
+                    API / Admin Token
+                  </label>
+                  <input
+                    id="operator-token"
+                    type="password"
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    placeholder="Enter API token..."
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      backgroundColor: "var(--background)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--foreground)",
+                      fontSize: "0.875rem",
+                    }}
+                    autoFocus
+                  />
+                </div>
+              )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button

@@ -1,5 +1,6 @@
 import { getConfig } from "./config";
 import { validateCsrf, isStateChangingMethod } from "./csrf";
+import { UserRepository } from "./user-repository";
 
 export type UserRole = "SALES_OPERATOR" | "ADMIN" | "VIEWER";
 
@@ -18,31 +19,24 @@ export type AuthResult =
  * -------------------------------------------------------------
  * 1. External/Client Header Boundary:
  *    Client-supplied headers such as `x-actor-id` and `x-actor-role` MUST NOT be trusted
- *    for authentication or privilege assignment. In an MVP architecture without an external
- *    OIDC/JWT Identity Provider, all user identities and permissions are derived strictly
- *    from server-validated credentials.
+ *    for authentication or privilege assignment. All user identities and permissions are
+ *    derived strictly from server-validated credentials.
  *
- * 2. Token-to-Identity Mapping (Server-Side Source of Truth):
- *    - `ADMIN_AUTH_TOKEN`: Grants verified `ADMIN` role with actor ID `service_admin`.
- *    - `API_AUTH_TOKEN`: Grants verified `SALES_OPERATOR` role with actor ID `service_operator`.
- *    - `VIEWER_AUTH_TOKEN`: Grants verified `VIEWER` role with actor ID `service_viewer`.
- *    Attempting to supply `x-actor-role: ADMIN` or arbitrary `x-actor-id` alongside
- *    the standard operator or viewer token will have ZERO effect; privileges are never elevated.
+ * 2. Multi-Tier Authentication Strategy:
+ *    - Tier 1: Static Service Tokens (ADMIN_AUTH_TOKEN, API_AUTH_TOKEN, VIEWER_AUTH_TOKEN)
+ *      Reserved for machine-to-machine integrations and administrative bootstrap.
+ *    - Tier 2: Database-Backed User Sessions (user_sessions table in PostgreSQL)
+ *      Stores SHA-256 hashed session tokens tied to specific individual operators with
+ *      time-limited expiry, IP logging, and revocation support.
  *
  * 3. CSRF & Session Boundary:
  *    Browser requests authenticated via session cookie (`astraops_session`) executing
  *    state-changing methods (POST, PUT, PATCH, DELETE) undergo strict Origin/Host validation.
- *    Server-to-server calls authenticated via Authorization Bearer or x-api-key bypass
- *    CSRF checks to preserve API compatibility.
- *
- * 4. Reverse Proxy / Gateway Requirement:
- *    Any edge reverse proxy (Cloudflare, Nginx, Envoy) MUST strip incoming untrusted
- *    `x-actor-*` headers before forwarding traffic to the AstraOps backend.
  */
-export function authenticateRequest(
+export async function authenticateRequest(
   request: Request,
   allowedRoles: UserRole[] = ["SALES_OPERATOR", "ADMIN"]
-): AuthResult {
+): Promise<AuthResult> {
   const authHeader = request.headers.get("authorization");
   const apiKeyHeader = request.headers.get("x-api-key");
 
@@ -98,10 +92,9 @@ export function authenticateRequest(
   }
 
   const config = getConfig();
-
-  // Derive identity and role strictly from verified server credentials
   let verifiedUser: AuthenticatedUser | null = null;
 
+  // Tier 1: Check static service tokens first (fast path for bootstrap/M2M)
   if (token === config.ADMIN_AUTH_TOKEN) {
     verifiedUser = {
       userId: "service_admin",
@@ -121,6 +114,23 @@ export function authenticateRequest(
       role: "VIEWER",
     };
   } else {
+    // Tier 2: Check database-backed user session token
+    try {
+      const userRepo = new UserRepository();
+      const sessionResult = await userRepo.validateSession(token);
+      if (sessionResult.valid) {
+        verifiedUser = {
+          userId: sessionResult.user.id,
+          actorId: sessionResult.user.email,
+          role: sessionResult.user.role,
+        };
+      }
+    } catch {
+      // Database unavailable or query error, will return 401 below
+    }
+  }
+
+  if (!verifiedUser) {
     return {
       success: false,
       status: 401,
@@ -146,4 +156,3 @@ export function authenticateRequest(
     user: verifiedUser,
   };
 }
-

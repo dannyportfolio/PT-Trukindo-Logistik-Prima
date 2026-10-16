@@ -19,7 +19,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   // 1. Authentication & Authorization check
-  const auth = authenticateRequest(req);
+  const auth = await authenticateRequest(req);
   if (!auth.success) {
     return jsonError(auth.status, auth.code, auth.message);
   }
