@@ -8,6 +8,8 @@ import {
   computePayloadHash,
   IdempotencyConflictError,
 } from "@/lib/idempotency";
+import { sendInquiryConfirmationEmail } from "@/lib/notifications/email-service";
+import { dispatchSalesAlert } from "@/lib/notifications/sales-alert";
 
 /**
  * Minimum human interaction time before submission (3 seconds)
@@ -229,6 +231,33 @@ export async function POST(req: Request) {
     });
 
     const referenceNumber = `TRK-${createdLead.id.slice(0, 8).toUpperCase()}`;
+
+    // Milestone 2 Issue #2: Asynchronously dispatch confirmation email and internal sales alert (fail-safe non-blocking)
+    const notificationPayload = {
+      referenceNumber,
+      companyName: data.companyName,
+      contactName: data.contactName,
+      contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone,
+      jobTitle: data.jobTitle,
+      originCity: data.originCity,
+      destinationCity: data.destinationCity,
+      serviceCategory: data.serviceCategory,
+      cargoType: data.cargoType,
+      truckType: data.truckType,
+      estimatedVolumeWeight: data.estimatedVolumeWeight,
+      estimatedShippingFrequency: data.estimatedShippingFrequency,
+      firstLoadingDate: data.firstLoadingDate,
+      additionalNotes: data.additionalNotes,
+      submittedAt: new Date().toISOString(),
+    };
+
+    Promise.allSettled([
+      sendInquiryConfirmationEmail(notificationPayload),
+      dispatchSalesAlert(notificationPayload),
+    ]).catch((err) => {
+      console.warn("[POST /api/inquiries] Failed background notification dispatch:", err);
+    });
 
     const responsePayload = {
       success: true,

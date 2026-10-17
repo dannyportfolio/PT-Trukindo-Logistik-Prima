@@ -15,7 +15,8 @@ export function ConditionalFooter() {
     pathname.startsWith("/industries") ||
     pathname.startsWith("/operations-safety") ||
     pathname.startsWith("/quote") ||
-    pathname.startsWith("/contact");
+    pathname.startsWith("/contact") ||
+    pathname.startsWith("/track");
 
   if (!isPublicRoute) {
     return null;

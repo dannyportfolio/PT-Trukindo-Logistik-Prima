@@ -31,9 +31,20 @@ export const ConfigSchema = z.object({
 
   ROUTER_BASE_URL: z.string().url().default("http://localhost:20128/v1"),
   LLM_GATEWAY_PROVIDER: z.enum(["9router", "direct"]).default("9router"),
+  LLM_FALLBACK_ON_ERROR: z.coerce.boolean().default(true),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_API_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
   API_AUTH_TOKEN: z.string().default("astraops-secret-token"),
   ADMIN_AUTH_TOKEN: z.string().default("astraops-admin-token"),
   VIEWER_AUTH_TOKEN: z.string().default("astraops-viewer-token"),
+
+  // Transactional Email & Internal Sales Alerts (Milestone 2 Issue #2)
+  RESEND_API_KEY: z.string().optional(),
+  SALES_ALERT_WEBHOOK_URL: z.string().url().optional().or(z.literal("")),
+  EMAIL_FROM: z.string().default("PT Trukindo Logistik Prima <inquiry@trukindo.co.id>"),
+
+  // Fleet Telematics Webhook Security (Milestone 4 Issue #6)
+  TELEMATICS_WEBHOOK_SECRET: z.string().default("trukindo-telematics-secret-2026"),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;

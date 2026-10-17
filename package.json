@@ -16,7 +16,6 @@
     "db:backup": "node scripts/backup-db.mjs",
     "db:dr-drill": "node scripts/db-dr-drill.mjs",
     "db:verify": "node scripts/verify-db-connection.mjs"
-    "db:backup": "node scripts/backup-db.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

@@ -46,6 +46,8 @@ export interface LogisticsDossierLayers {
   salesRecommendations: string[];
 }
 
+export type LogisticsQualificationResult = LogisticsScoreResult;
+
 export interface LogisticsScoreResult {
   score: number;
   confidence: number;

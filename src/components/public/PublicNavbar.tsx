@@ -15,6 +15,7 @@ export function PublicNavbar() {
     { href: "/fleet-cargo", label: "Armada & Muatan" },
     { href: "/industries", label: "Sektor Industri" },
     { href: "/operations-safety", label: "Operasional & Safety" },
+    { href: "/track", label: "Lacak Muatan" },
     { href: "/contact", label: "Kontak" },
   ];
 

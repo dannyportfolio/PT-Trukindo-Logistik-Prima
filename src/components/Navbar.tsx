@@ -22,7 +22,8 @@ export function Navbar() {
     pathname.startsWith("/industries") ||
     pathname.startsWith("/operations-safety") ||
     pathname.startsWith("/quote") ||
-    pathname.startsWith("/contact");
+    pathname.startsWith("/contact") ||
+    pathname.startsWith("/track");
 
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);

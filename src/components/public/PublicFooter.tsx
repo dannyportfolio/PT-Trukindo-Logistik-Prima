@@ -113,6 +113,11 @@ export function PublicFooter() {
               </Link>
             </li>
             <li>
+              <Link href="/track" style={{ fontSize: "0.875rem", color: "#EAF3FF", textDecoration: "none", fontWeight: 600 }} className="footer-link">
+                🔍 Lacak Muatan &amp; Cek Resi
+              </Link>
+            </li>
+            <li>
               <Link href="/quote" style={{ fontSize: "0.875rem", color: "#2F80D1", textDecoration: "none", fontWeight: 700 }} className="footer-cta-link">
                 Minta Penawaran Harga →
               </Link>

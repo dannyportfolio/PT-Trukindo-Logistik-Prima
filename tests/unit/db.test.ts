@@ -25,6 +25,10 @@ function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     API_AUTH_TOKEN: "astraops-secret-token",
     ADMIN_AUTH_TOKEN: "astraops-admin-token",
     VIEWER_AUTH_TOKEN: "astraops-viewer-token",
+    LLM_FALLBACK_ON_ERROR: true,
+    OPENAI_API_BASE_URL: "https://api.openai.com/v1",
+    EMAIL_FROM: "PT Trukindo Logistik Prima <inquiry@trukindo.co.id>",
+    TELEMATICS_WEBHOOK_SECRET: "trukindo-telematics-secret-2026",
     ...overrides,
   };
 }
